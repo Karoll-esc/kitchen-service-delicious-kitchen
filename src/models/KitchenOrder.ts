@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { MONGO_COLLECTIONS } from '../constants/collections';
 
 export interface IKitchenOrder extends Document {
   orderId: string;
@@ -62,7 +63,8 @@ const KitchenOrderSchema = new Schema({
   estimatedTime: Number,
   notes: String
 }, {
-  timestamps: true
+  timestamps: true,
+  collection: MONGO_COLLECTIONS.KITCHEN_ORDERS // Especifica nombre de colección explícitamente
 });
 
 export const KitchenOrder = mongoose.model<IKitchenOrder>('KitchenOrder', KitchenOrderSchema);
