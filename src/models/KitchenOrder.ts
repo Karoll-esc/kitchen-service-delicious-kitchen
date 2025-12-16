@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { MONGO_COLLECTIONS } from '../constants/collections';
+import { KitchenOrderStatus, ALL_KITCHEN_ORDER_STATES } from '../constants/orderStates';
 
 export interface IKitchenOrder extends Document {
   orderId: string;
@@ -12,7 +13,7 @@ export interface IKitchenOrder extends Document {
     quantity: number;
     price?: number;
   }>;
-  status: 'RECEIVED' | 'PREPARING' | 'READY' | 'CANCELLED';
+  status: KitchenOrderStatus;
   receivedAt: Date;
   preparingAt?: Date;
   readyAt?: Date;
@@ -48,8 +49,8 @@ const KitchenOrderSchema = new Schema({
   }],
   status: { 
     type: String, 
-    enum: ['RECEIVED', 'PREPARING', 'READY', 'CANCELLED'],
-    default: 'RECEIVED',
+    enum: ALL_KITCHEN_ORDER_STATES,
+    default: KitchenOrderStatus.RECEIVED,
     index: true
   },
   receivedAt: {
