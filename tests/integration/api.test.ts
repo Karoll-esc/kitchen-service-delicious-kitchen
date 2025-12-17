@@ -109,14 +109,14 @@ describe('Kitchen Service API - Integration Tests', () => {
         orderId: 'order-specific',
         userId: 'user-specific',
         items: [{ name: 'Pasta', quantity: 1, price: 12.99 }],
-        status: 'RECEIVED'
+        status: 'received'
       });
 
       const response = await request(app).get('/orders/order-specific');
 
       expect(response.status).toBe(200);
       expect(response.body.orderId).toBe('order-specific');
-      expect(response.body.status).toBe('RECEIVED');
+      expect(response.body.status).toBe('received');
     });
 
     it('debe retornar 404 si orden no existe', async () => {
@@ -133,14 +133,14 @@ describe('Kitchen Service API - Integration Tests', () => {
         orderId: 'order-to-start',
         userId: 'user-to-start',
         items: [{ name: 'Steak', quantity: 1 }],
-        status: 'RECEIVED'
+        status: 'received'
       });
 
       const response = await request(app)
         .patch('/orders/order-to-start/start');
 
       expect(response.status).toBe(200);
-      expect(response.body.status).toBe('PREPARING');
+      expect(response.body.status).toBe('preparing');
       expect(response.body.preparingAt).toBeDefined();
     });
 
@@ -158,7 +158,7 @@ describe('Kitchen Service API - Integration Tests', () => {
         orderId: 'order-to-complete',
         userId: 'user-to-complete',
         items: [{ name: 'Fish', quantity: 1 }],
-        status: 'PREPARING',
+        status: 'preparing',
         preparingAt: new Date()
       });
 
@@ -166,7 +166,7 @@ describe('Kitchen Service API - Integration Tests', () => {
         .patch('/orders/order-to-complete/complete');
 
       expect(response.status).toBe(200);
-      expect(response.body.status).toBe('READY');
+      expect(response.body.status).toBe('ready');
       expect(response.body.readyAt).toBeDefined();
     });
 
@@ -175,7 +175,7 @@ describe('Kitchen Service API - Integration Tests', () => {
         orderId: 'order-wrong-status',
         userId: 'user-wrong-status',
         items: [{ name: 'Soup', quantity: 1 }],
-        status: 'RECEIVED'
+        status: 'received'
       });
 
       const response = await request(app)
@@ -199,21 +199,87 @@ describe('Kitchen Service API - Integration Tests', () => {
 
       // Verificar estado inicial
       let response = await request(app).get('/orders/full-flow-order');
-      expect(response.body.status).toBe('RECEIVED');
+      expect(response.body.status).toBe('received');
 
       // 2. Iniciar preparación
       response = await request(app).patch('/orders/full-flow-order/start');
-      expect(response.body.status).toBe('PREPARING');
+      expect(response.body.status).toBe('preparing');
 
       // 3. Completar orden
       response = await request(app).patch('/orders/full-flow-order/complete');
-      expect(response.body.status).toBe('READY');
+      expect(response.body.status).toBe('ready');
 
       // Verificar que se publicaron todos los eventos
       expect(mockRabbitMQ.publish).toHaveBeenCalledTimes(3);
       expect(mockRabbitMQ.publish).toHaveBeenCalledWith('order.received', expect.any(Object));
       expect(mockRabbitMQ.publish).toHaveBeenCalledWith('order.preparing', expect.any(Object));
       expect(mockRabbitMQ.publish).toHaveBeenCalledWith('order.ready', expect.any(Object));
+    });
+  });
+
+  describe('Cancelación de pedidos', () => {
+    it('debe cancelar pedido desde received', async () => {
+      await kitchenService.handleOrderCreated({
+        orderId: 'order-cancel-test',
+        userId: 'user-cancel',
+        items: [{ name: 'Pizza', quantity: 1 }]
+      });
+
+      const cancelledOrder = await kitchenService.handleOrderCancelled({
+        orderId: 'order-cancel-test',
+        reason: 'Cliente cambió de opinión',
+        cancelledBy: 'user-cancel'
+      });
+
+      expect(cancelledOrder).toBeDefined();
+      expect(cancelledOrder?.status).toBe('cancelled');
+      expect(cancelledOrder?.cancelledAt).toBeInstanceOf(Date);
+    });
+
+    it('debe cancelar pedido desde preparing', async () => {
+      const order = await KitchenOrder.create({
+        orderId: 'order-cancel-preparing-test',
+        userId: 'user-cancel2',
+        items: [{ name: 'Burger', quantity: 1 }],
+        status: 'preparing',
+        preparingAt: new Date()
+      });
+
+      const cancelledOrder = await kitchenService.handleOrderCancelled({
+        orderId: 'order-cancel-preparing-test',
+        reason: 'Error en la orden',
+        cancelledBy: 'admin'
+      });
+
+      expect(cancelledOrder?.status).toBe('cancelled');
+    });
+
+    it('debe manejar cancelación de pedido inexistente', async () => {
+      const result = await kitchenService.handleOrderCancelled({
+        orderId: 'non-existent-cancel',
+        reason: 'Test',
+        cancelledBy: 'user'
+      });
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Búsqueda por orderNumber', () => {
+    it('debe encontrar orden por orderNumber', async () => {
+      await KitchenOrder.create({
+        orderId: 'uuid-123-456',
+        orderNumber: 'ORD-2025-001',
+        userId: 'user-search',
+        items: [{ name: 'Pizza', quantity: 1 }],
+        status: 'received'
+      });
+
+      const order = await kitchenService.getOrderById('ORD-2025-001');
+
+      expect(order).toBeDefined();
+      expect(order?.orderNumber).toBe('ORD-2025-001');
+      expect(order?.orderId).toBe('uuid-123-456');
     });
   });
 });
