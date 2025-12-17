@@ -61,7 +61,19 @@ async function startServer() {
     );
     console.log('✅ Consumer listo para order.created');
 
-    // 6. Iniciar servidor
+    // 6. Configurar consumidor de eventos order.cancelled
+    console.log('👂 Suscribiendo a eventos order.cancelled...');
+    await rabbitMQClient.consume(
+      'kitchen-service-queue',
+      'order.cancelled',
+      async (orderData) => {
+        console.log('📥 Evento recibido: order.cancelled', orderData);
+        await kitchenService.handleOrderCancelled(orderData);
+      }
+    );
+    console.log('✅ Consumer listo para order.cancelled');
+
+    // 7. Iniciar servidor
     app.listen(PORT, () => {
       console.log(`👨‍🍳 Kitchen Service corriendo en puerto ${PORT}`);
       console.log(`📡 Endpoints disponibles:`);
