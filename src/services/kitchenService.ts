@@ -1,5 +1,11 @@
 import { KitchenOrder, IKitchenOrder } from '../models/KitchenOrder';
 import { IEventPublisher } from '../interfaces/IEventPublisher';
+import {
+  KitchenOrderStatus,
+  KITCHEN_ORDER_EVENT_NAMES,
+  isValidKitchenStateTransition,
+  isKitchenCancellable
+} from '../constants/orderStates';
 
 export interface OrderCreatedEvent {
   orderId: string;
@@ -53,7 +59,7 @@ export class KitchenService {
         customerName: orderData.customerName,
         customerEmail: orderData.customerEmail,
         items: orderData.items,
-        status: 'RECEIVED',
+        status: KitchenOrderStatus.RECEIVED,
         receivedAt: new Date(),
         notes: orderData.notes,
         estimatedTime: this.calculateEstimatedTime(orderData.items)
@@ -63,14 +69,14 @@ export class KitchenService {
       console.log(`✅ Kitchen order saved: ${orderData.orderNumber || orderData.orderId}`);
 
       // Publicar evento order.received para notification-service
-      await this.eventPublisher.publish('order.received', {
-        type: 'order.received',
+      await this.eventPublisher.publish(KITCHEN_ORDER_EVENT_NAMES.RECEIVED, {
+        type: KITCHEN_ORDER_EVENT_NAMES.RECEIVED,
         orderId: orderData.orderId,
         orderNumber: orderData.orderNumber,  // ✅ Incluir orderNumber
         userId,
         customerName: orderData.customerName,
         customerEmail: orderData.customerEmail,
-        status: 'RECEIVED',
+        status: KitchenOrderStatus.RECEIVED,
         timestamp: new Date().toISOString(),
         data: {
           orderNumber: orderData.orderNumber,  // ✅ También en data
@@ -80,7 +86,7 @@ export class KitchenService {
         }
       });
 
-      console.log(`📤 Event published: order.received for ${orderData.orderNumber || orderData.orderId}`);
+      console.log(`📤 Event published: ${KITCHEN_ORDER_EVENT_NAMES.RECEIVED} for ${orderData.orderNumber || orderData.orderId}`);
 
       return kitchenOrder;
     } catch (error) {
@@ -107,35 +113,36 @@ export class KitchenService {
         throw new Error(`Order ${orderId} not found`);
       }
 
-      if (order.status !== 'RECEIVED') {
+      if (order.status !== KitchenOrderStatus.RECEIVED) {
         throw new Error(`Order ${orderId} cannot start preparing. Current status: ${order.status}`);
       }
 
       // Actualizar estado
-      order.status = 'PREPARING';
+      order.status = KitchenOrderStatus.PREPARING;
       order.preparingAt = new Date();
       await order.save();
 
       console.log(`👨‍🍳 Order ${order.orderNumber || orderId} is now PREPARING`);
 
       // Publicar evento order.preparing para notification-service
-      await this.eventPublisher.publish('order.preparing', {
-        type: 'order.preparing',
+      await this.eventPublisher.publish(KITCHEN_ORDER_EVENT_NAMES.PREPARING, {
+        type: KITCHEN_ORDER_EVENT_NAMES.PREPARING,
         orderId: order.orderId,
         orderNumber: order.orderNumber,  // ✅ Incluir orderNumber
         userId: order.userId,
         customerName: order.customerName,
         customerEmail: order.customerEmail,
-        status: 'PREPARING',
+        status: KitchenOrderStatus.PREPARING,
         timestamp: new Date().toISOString(),
         data: {
           orderNumber: order.orderNumber,  // ✅ También en data
           preparingAt: order.preparingAt,
-          estimatedTime: order.estimatedTime
+          estimatedTime: order.estimatedTime,
+          items: order.items  // ✅ Incluir items para email notification
         }
       });
 
-      console.log(`📤 Event published: order.preparing for ${order.orderNumber || orderId}`);
+      console.log(`📤 Event published: ${KITCHEN_ORDER_EVENT_NAMES.PREPARING} for ${order.orderNumber || orderId}`);
 
       return order;
     } catch (error) {
@@ -162,26 +169,26 @@ export class KitchenService {
         throw new Error(`Order ${orderId} not found`);
       }
 
-      if (order.status !== 'PREPARING') {
+      if (order.status !== KitchenOrderStatus.PREPARING) {
         throw new Error(`Order ${orderId} cannot be marked as ready. Current status: ${order.status}`);
       }
 
       // Actualizar estado
-      order.status = 'READY';
+      order.status = KitchenOrderStatus.READY;
       order.readyAt = new Date();
       await order.save();
 
       console.log(`✅ Order ${order.orderNumber || orderId} is now READY`);
 
       // Publicar evento order.ready para notification-service
-      await this.eventPublisher.publish('order.ready', {
-        type: 'order.ready',
+      await this.eventPublisher.publish(KITCHEN_ORDER_EVENT_NAMES.READY, {
+        type: KITCHEN_ORDER_EVENT_NAMES.READY,
         orderId: order.orderId,
         orderNumber: order.orderNumber,  // ✅ Incluir orderNumber
         userId: order.userId,
         customerName: order.customerName,
         customerEmail: order.customerEmail,
-        status: 'READY',
+        status: KitchenOrderStatus.READY,
         timestamp: new Date().toISOString(),
         data: {
           orderNumber: order.orderNumber,  // ✅ También en data
@@ -192,7 +199,7 @@ export class KitchenService {
         }
       });
 
-      console.log(`📤 Event published: order.ready for ${order.orderNumber || orderId}`);
+      console.log(`📤 Event published: ${KITCHEN_ORDER_EVENT_NAMES.READY} for ${order.orderNumber || orderId}`);
 
       return order;
     } catch (error) {
@@ -219,7 +226,7 @@ export class KitchenService {
       }
 
       // Cambiar status a CANCELLED
-      kitchenOrder.status = 'CANCELLED' as any; // Agregar a enum si es necesario
+      kitchenOrder.status = KitchenOrderStatus.CANCELLED;
       kitchenOrder.cancelledAt = new Date();
       kitchenOrder.cancellationReason = reason;
       await kitchenOrder.save();
@@ -238,7 +245,7 @@ export class KitchenService {
    */
   async getAllOrders(status?: string): Promise<IKitchenOrder[]> {
     try {
-      const filter = status ? { status: status.toUpperCase() } : {};
+      const filter = status ? { status: status.toLowerCase() } : {};
       return await KitchenOrder.find(filter).sort({ receivedAt: -1 });
     } catch (error) {
       console.error(`❌ Error fetching orders:`, error);

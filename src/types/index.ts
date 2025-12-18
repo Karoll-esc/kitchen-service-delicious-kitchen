@@ -2,6 +2,8 @@
  * Tipos y eventos del Kitchen Service
  */
 
+import { KitchenOrderStatus } from '../constants/orderStates';
+
 // ========================================
 // EVENTOS DE ENTRADA (Consumidos)
 // ========================================
@@ -32,7 +34,7 @@ export interface OrderCancelledEvent {
   userId?: string;
   customerName?: string;
   customerEmail?: string;
-  status: 'CANCELLED';
+  status: typeof KitchenOrderStatus.CANCELLED;
   previousStatus: string;
   reason?: string;
   cancelledBy: 'customer' | 'admin';
@@ -56,7 +58,7 @@ export interface OrderReceivedEvent {
   userId: string;
   customerName?: string;
   customerEmail?: string;
-  status: 'RECEIVED';
+  status: typeof KitchenOrderStatus.RECEIVED;
   receivedAt: Date;
   estimatedTime?: number;
   items: Array<{
@@ -74,7 +76,7 @@ export interface OrderPreparingEvent {
   userId: string;
   customerName?: string;
   customerEmail?: string;
-  status: 'PREPARING';
+  status: typeof KitchenOrderStatus.PREPARING;
   preparingAt: Date;
   estimatedTime?: number;
 }
@@ -87,7 +89,7 @@ export interface OrderReadyEvent {
   userId: string;
   customerName?: string;
   customerEmail?: string;
-  status: 'READY';
+  status: typeof KitchenOrderStatus.READY;
   readyAt: Date;
   receivedAt: Date;
   preparingAt?: Date;
@@ -111,7 +113,7 @@ export interface ApiResponse<T = any> {
 }
 
 export interface OrderStatusTransition {
-  from: 'RECEIVED' | 'PREPARING' | 'READY';
-  to: 'RECEIVED' | 'PREPARING' | 'READY';
+  from: KitchenOrderStatus;
+  to: KitchenOrderStatus;
   timestamp: Date;
 }

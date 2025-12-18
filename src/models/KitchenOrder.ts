@@ -1,4 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { MONGO_COLLECTIONS } from '../constants/collections';
+import { KitchenOrderStatus, ALL_KITCHEN_ORDER_STATES } from '../constants/orderStates';
 
 export interface IKitchenOrder extends Document {
   orderId: string;
@@ -11,7 +13,7 @@ export interface IKitchenOrder extends Document {
     quantity: number;
     price?: number;
   }>;
-  status: 'RECEIVED' | 'PREPARING' | 'READY' | 'CANCELLED';
+  status: KitchenOrderStatus;
   receivedAt: Date;
   preparingAt?: Date;
   readyAt?: Date;
@@ -47,8 +49,8 @@ const KitchenOrderSchema = new Schema({
   }],
   status: { 
     type: String, 
-    enum: ['RECEIVED', 'PREPARING', 'READY', 'CANCELLED'],
-    default: 'RECEIVED',
+    enum: ALL_KITCHEN_ORDER_STATES,
+    default: KitchenOrderStatus.RECEIVED,
     index: true
   },
   receivedAt: {
@@ -62,7 +64,8 @@ const KitchenOrderSchema = new Schema({
   estimatedTime: Number,
   notes: String
 }, {
-  timestamps: true
+  timestamps: true,
+  collection: MONGO_COLLECTIONS.KITCHEN_ORDERS // Especifica nombre de colección explícitamente
 });
 
 export const KitchenOrder = mongoose.model<IKitchenOrder>('KitchenOrder', KitchenOrderSchema);
