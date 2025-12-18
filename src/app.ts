@@ -52,7 +52,7 @@ async function startServer() {
     // 5. Configurar consumidor de eventos order.created
     console.log('👂 Suscribiendo a eventos order.created...');
     await rabbitMQClient.consume(
-      'kitchen-service-queue',
+      'kitchen-service-order-created',  // ✅ Cola específica para order.created
       'order.created',
       async (orderData) => {
         console.log('📥 Evento recibido: order.created', orderData);
@@ -64,7 +64,7 @@ async function startServer() {
     // 6. Configurar consumidor de eventos order.cancelled
     console.log('👂 Suscribiendo a eventos order.cancelled...');
     await rabbitMQClient.consume(
-      'kitchen-service-queue',
+      'kitchen-service-order-cancelled',  // ✅ Cola específica para order.cancelled
       'order.cancelled',
       async (orderData) => {
         console.log('📥 Evento recibido: order.cancelled', orderData);
