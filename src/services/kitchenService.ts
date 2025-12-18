@@ -137,7 +137,8 @@ export class KitchenService {
         data: {
           orderNumber: order.orderNumber,  // ✅ También en data
           preparingAt: order.preparingAt,
-          estimatedTime: order.estimatedTime
+          estimatedTime: order.estimatedTime,
+          items: order.items  // ✅ Incluir items para email notification
         }
       });
 
