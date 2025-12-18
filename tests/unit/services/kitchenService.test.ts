@@ -31,7 +31,7 @@ describe('KitchenService - Unit Tests', () => {
       const order = await KitchenOrder.findOne({ orderId: 'order-001' });
       
       expect(order).toBeDefined();
-      expect(order?.status).toBe('RECEIVED');
+      expect(order?.status).toBe('received');
       expect(order?.items).toHaveLength(1);
       expect(order?.receivedAt).toBeInstanceOf(Date);
     });
@@ -51,7 +51,7 @@ describe('KitchenService - Unit Tests', () => {
           type: 'order.received',
           orderId: 'order-002',
           userId: 'user-002',
-          status: 'RECEIVED',
+          status: 'received',
           timestamp: expect.any(String),
           data: expect.objectContaining({
             receivedAt: expect.any(Date),
@@ -84,12 +84,12 @@ describe('KitchenService - Unit Tests', () => {
         orderId: 'order-003',
         userId: 'user-003',
         items: [{ name: 'Pasta', quantity: 1 }],
-        status: 'RECEIVED'
+        status: 'received'
       });
 
       const order = await kitchenService.startPreparing('order-003');
 
-      expect(order.status).toBe('PREPARING');
+      expect(order.status).toBe('preparing');
       expect(order.preparingAt).toBeInstanceOf(Date);
     });
 
@@ -98,7 +98,7 @@ describe('KitchenService - Unit Tests', () => {
         orderId: 'order-004',
         userId: 'user-004',
         items: [{ name: 'Salad', quantity: 1 }],
-        status: 'RECEIVED',
+        status: 'received',
         estimatedTime: 7 // Calcular: 5 + (1 * 2) = 7 minutos
       });
 
@@ -110,7 +110,7 @@ describe('KitchenService - Unit Tests', () => {
           type: 'order.preparing',
           orderId: 'order-004',
           userId: 'user-004',
-          status: 'PREPARING',
+          status: 'preparing',
           timestamp: expect.any(String),
           data: expect.objectContaining({
             preparingAt: expect.any(Date),
@@ -131,7 +131,7 @@ describe('KitchenService - Unit Tests', () => {
         orderId: 'order-005',
         userId: 'user-005',
         items: [{ name: 'Pizza', quantity: 1 }],
-        status: 'PREPARING'  // Ya en preparing
+        status: 'preparing'  // Ya en preparing
       });
 
       await expect(
@@ -146,13 +146,13 @@ describe('KitchenService - Unit Tests', () => {
         orderId: 'order-006',
         userId: 'user-006',
         items: [{ name: 'Steak', quantity: 1 }],
-        status: 'PREPARING',
+        status: 'preparing',
         preparingAt: new Date()
       });
 
       const order = await kitchenService.markAsReady('order-006');
 
-      expect(order.status).toBe('READY');
+      expect(order.status).toBe('ready');
       expect(order.readyAt).toBeInstanceOf(Date);
     });
 
@@ -161,7 +161,7 @@ describe('KitchenService - Unit Tests', () => {
         orderId: 'order-007',
         userId: 'user-007',
         items: [{ name: 'Fish', quantity: 1 }],
-        status: 'PREPARING'
+        status: 'preparing'
       });
 
       await kitchenService.markAsReady('order-007');
@@ -172,7 +172,7 @@ describe('KitchenService - Unit Tests', () => {
           type: 'order.ready',
           orderId: 'order-007',
           userId: 'user-007',
-          status: 'READY',
+          status: 'ready',
           timestamp: expect.any(String),
           data: expect.objectContaining({
             readyAt: expect.any(Date),
@@ -188,7 +188,7 @@ describe('KitchenService - Unit Tests', () => {
         orderId: 'order-008',
         userId: 'user-008',
         items: [{ name: 'Soup', quantity: 1 }],
-        status: 'RECEIVED'  // No está en preparing
+        status: 'received'  // No está en preparing
       });
 
       await expect(
@@ -241,6 +241,98 @@ describe('KitchenService - Unit Tests', () => {
     it('debe retornar null si orden no existe', async () => {
       const order = await kitchenService.getOrderById('non-existent');
       expect(order).toBeNull();
+    });
+  });
+
+  describe('handleOrderCancelled', () => {
+    it('debe cancelar pedido en received', async () => {
+      await KitchenOrder.create({
+        orderId: 'order-to-cancel',
+        userId: 'user-cancel',
+        items: [{ name: 'Pizza', quantity: 1 }],
+        status: 'received'
+      });
+
+      const result = await kitchenService.handleOrderCancelled({
+        orderId: 'order-to-cancel',
+        reason: 'Cliente cambió de opinión',
+        cancelledBy: 'user-cancel'
+      });
+
+      expect(result).toBeDefined();
+      expect(result?.status).toBe('cancelled');
+      expect(result?.cancelledAt).toBeInstanceOf(Date);
+      expect(result?.cancellationReason).toBe('Cliente cambió de opinión');
+    });
+
+    it('debe cancelar pedido en preparing', async () => {
+      await KitchenOrder.create({
+        orderId: 'order-cancel-preparing',
+        userId: 'user-cancel2',
+        items: [{ name: 'Burger', quantity: 1 }],
+        status: 'preparing',
+        preparingAt: new Date()
+      });
+
+      const result = await kitchenService.handleOrderCancelled({
+        orderId: 'order-cancel-preparing',
+        reason: 'Error en pedido',
+        cancelledBy: 'admin'
+      });
+
+      expect(result?.status).toBe('cancelled');
+    });
+
+    it('debe retornar null si orden no existe', async () => {
+      const result = await kitchenService.handleOrderCancelled({
+        orderId: 'non-existent-order',
+        reason: 'Test',
+        cancelledBy: 'user'
+      });
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('getAllOrders con filtros', () => {
+    it('debe filtrar órdenes por status', async () => {
+      await KitchenOrder.create({
+        orderId: 'order-filter-1',
+        userId: 'user-1',
+        items: [{ name: 'Item 1', quantity: 1 }],
+        status: 'received'
+      });
+      
+      await KitchenOrder.create({
+        orderId: 'order-filter-2',
+        userId: 'user-2',
+        items: [{ name: 'Item 2', quantity: 1 }],
+        status: 'preparing'
+      });
+
+      const receivedOrders = await kitchenService.getAllOrders('received');
+      expect(receivedOrders).toHaveLength(1);
+      expect(receivedOrders[0].status).toBe('received');
+    });
+  });
+
+  describe('calculateEstimatedTime', () => {
+    it('debe calcular tiempo correcto para múltiples items', async () => {
+      const orderData = {
+        orderId: 'order-time-calc',
+        userId: 'user-time',
+        items: [
+          { name: 'Pizza', quantity: 2 },
+          { name: 'Burger', quantity: 3 },
+          { name: 'Salad', quantity: 1 }
+        ]
+      };
+
+      const order = await kitchenService.handleOrderCreated(orderData);
+      
+      // Total items: 2 + 3 + 1 = 6
+      // Tiempo esperado: 5 + (6 * 2) = 17 minutos
+      expect(order.estimatedTime).toBe(17);
     });
   });
 });
