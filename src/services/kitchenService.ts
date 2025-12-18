@@ -244,7 +244,7 @@ export class KitchenService {
    */
   async getAllOrders(status?: string): Promise<IKitchenOrder[]> {
     try {
-      const filter = status ? { status: status.toUpperCase() } : {};
+      const filter = status ? { status: status.toLowerCase() } : {};
       return await KitchenOrder.find(filter).sort({ receivedAt: -1 });
     } catch (error) {
       console.error(`❌ Error fetching orders:`, error);

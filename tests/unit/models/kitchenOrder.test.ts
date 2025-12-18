@@ -1,4 +1,5 @@
 import { KitchenOrder } from '../../../src/models/KitchenOrder';
+import { KitchenOrderStatus } from '../../../src/constants/orderStates';
 
 describe('KitchenOrder Model - Unit Tests', () => {
   
@@ -10,7 +11,7 @@ describe('KitchenOrder Model - Unit Tests', () => {
         items: [
           { name: 'Pizza', quantity: 2, price: 15.99 }
         ],
-        status: 'RECEIVED'
+        status: KitchenOrderStatus.RECEIVED
       };
 
       const order = await KitchenOrder.create(orderData);
@@ -18,7 +19,7 @@ describe('KitchenOrder Model - Unit Tests', () => {
       expect(order.orderId).toBe('order-123');
       expect(order.userId).toBe('user-456');
       expect(order.items).toHaveLength(1);
-      expect(order.status).toBe('RECEIVED');
+      expect(order.status).toBe('received');
       expect(order.receivedAt).toBeInstanceOf(Date);
       expect(order.createdAt).toBeDefined();
       expect(order.updatedAt).toBeDefined();
@@ -28,7 +29,7 @@ describe('KitchenOrder Model - Unit Tests', () => {
       const orderData = {
         userId: 'user-123',
         items: [{ name: 'Pizza', quantity: 1 }],
-        status: 'RECEIVED'
+        status: KitchenOrderStatus.RECEIVED
       };
 
       await expect(KitchenOrder.create(orderData)).rejects.toThrow();
@@ -45,14 +46,14 @@ describe('KitchenOrder Model - Unit Tests', () => {
       await expect(KitchenOrder.create(orderData)).rejects.toThrow();
     });
 
-    it('debe tener status "RECEIVED" por defecto', async () => {
+    it('debe tener status "received" por defecto', async () => {
       const order = await KitchenOrder.create({
         orderId: 'order-456',
         userId: 'user-456',
         items: [{ name: 'Burger', quantity: 1 }]
       });
 
-      expect(order.status).toBe('RECEIVED');
+      expect(order.status).toBe('received');
     });
 
     it('debe evitar orderId duplicados', async () => {
@@ -116,7 +117,7 @@ describe('KitchenOrder Model - Unit Tests', () => {
       // Esperar un poco y actualizar
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      order.status = 'PREPARING';
+      order.status = KitchenOrderStatus.PREPARING;
       await order.save();
 
       expect(order.updatedAt.getTime()).toBeGreaterThan(originalUpdatedAt.getTime());
